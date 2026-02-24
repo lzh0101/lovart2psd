@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lovart → PSD Converter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f0f13;
+    color: #e8e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header p {
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  .card {
+    background: #1a1a24;
+    border: 1px solid #2a2a3a;
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 20px;
+  }
+
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #a78bfa;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-label span {
+    background: #a78bfa22;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #a78bfa;
+  }
+
+  .hint {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .hint code {
+    background: #2a2a3a;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Menlo', monospace;
+    font-size: 12px;
+    color: #c4b5fd;
+  }
+
+  textarea {
+    width: 100%;
+    height: 200px;
+    background: #12121a;
+    border: 1px solid #2a2a3a;
+    border-radius: 10px;
+    color: #e8e8f0;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #a78bfa; }
+  textarea::placeholder { color: #3a3a50; }
+
+  .preview-grid {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  #previewCanvas {
+    border-radius: 8px;
+    border: 1px solid #2a2a3a;
+    max-width: 160px;
+    max-height: 214px;
+    object-fit: contain;
+    display: none;
+    background: #12121a;
+  }
+  .layer-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 214px;
+    overflow-y: auto;
+  }
+  .layer-item {
+    background: #12121a;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeIn 0.3s ease;
+  }
+  .layer-item.bg { border-color: #60a5fa44; }
+  .layer-item.text-layer { border-color: #a78bfa44; }
+  .layer-icon { font-size: 14px; flex-shrink: 0; }
+  .layer-name { color: #c4b5fd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer-meta { color: #6b7280; font-size: 11px; flex-shrink: 0; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .btn {
+    width: 100%;
+    max-width: 720px;
+    height: 52px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+    color: #fff;
+    box-shadow: 0 4px 20px #7c3aed44;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px #7c3aed66; }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .status-bar {
+    width: 100%;
+    max-width: 720px;
+    margin-top: 16px;
+    display: none;
+  }
+  .progress-track {
+    background: #2a2a3a;
+    border-radius: 99px;
+    height: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #7c3aed, #2563eb);
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .status-text {
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+  }
+  .status-text.error { color: #f87171; }
+  .status-text.success { color: #34d399; }
+
+  .warning-note {
+    background: #1e1a0a;
+    border: 1px solid #4a3a10;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #fbbf24;
+    margin-top: 12px;
+    display: none;
+    line-height: 1.6;
+  }
+
+  .tag {
+    display: inline-block;
+    background: #1e1a30;
+    border: 1px solid #3a2a60;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #a78bfa;
+    margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Lovart → PSD Converter</h1>
+  <p>Export Lovart layer data as a Photoshop PSD file in one click</p>
+  <p style="margin-top:10px; font-size:12px; color:#4b5563; max-width:480px; line-height:1.6;">
+    This tool only converts image formats into PSD. All layer separation is generated by Lovart and is unrelated to this tool.
+  </p>
+</div>
+
+<!-- Step 1: Paste JSON -->
+<div class="card">
+  <div class="step-label"><span>1</span> Paste Lovart API Response</div>
+  <p class="hint">
+    Open DevTools in your browser, find the API response containing <code>generator_task_id</code>,
+    and paste the full JSON below.
+  </p>
+  <textarea id="jsonInput" placeholder='Paste JSON response here, e.g.:
+{
+  "code": 0,
+  "data": {
+    "artifacts": [ ... ]
+  }
+}'></textarea>
+</div>
+
+<!-- Step 2: Layer Preview -->
+<div class="card">
+  <div class="step-label"><span>2</span> Layer Preview <span class="tag" id="layerCount" style="display:none">0 layers</span></div>
+  <div class="preview-grid">
+    <canvas id="previewCanvas" width="160" height="214"></canvas>
+    <div class="layer-list" id="layerList">
+      <div style="color:#3a3a50; font-size:13px; padding: 20px 0;">Paste JSON above to auto-parse layer structure…</div>
+    </div>
+  </div>
+  <div class="warning-note" id="corsWarning">
+    ⚠️ Background image blocked by CORS. The background layer will be blank in the PSD — text and foreground layers are unaffected. You can manually replace it in Photoshop.
+  </div>
+</div>
+
+<!-- Convert Button -->
+<button class="btn btn-primary" id="convertBtn" onclick="convert()">
+  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M9 12l3 3m0 0l3-3m-3 3V4"/>
+  </svg>
+  Export PSD
+</button>
+
+<div class="status-bar" id="statusBar">
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="status-text" id="statusText">Ready…</div>
+</div>
+
+<!-- ag-psd browser bundle -->
+<script src="https://cdn.jsdelivr.net/npm/ag-psd@latest/dist/bundle.js"></script>
+<script>
+// ─── State ────────────────────────────────────────────────
+let parsedData = null;
+
+// ─── Auto-parse on paste ──────────────────────────────────
+document.getElementById('jsonInput').addEventListener('input', () => {
+  try {
+    parsedData = JSON.parse(document.getElementById('jsonInput').value.trim());
+    renderPreview(parsedData);
+  } catch(e) {
+    parsedData = null;
+    clearPreview();
+  }
+});
+
+function clearPreview() {
+  document.getElementById('layerList').innerHTML = '<div style="color:#3a3a50; font-size:13px; padding:20px 0;">Paste JSON above to auto-parse layer structure…</div>';
+  document.getElementById('layerCount').style.display = 'none';
+  document.getElementById('previewCanvas').style.display = 'none';
+  document.getElementById('corsWarning').style.display = 'none';
+}
+
+function renderPreview(data) {
+  const artifacts = data?.data?.artifacts;
+  if (!artifacts) {
+    clearPreview();
+    // Show a hint if the JSON is valid but just missing the expected structure
+    if (data && typeof data === 'object') {
+      document.getElementById('layerList').innerHTML =
+        '<div style="color:#f87171; font-size:13px; padding:16px 0; line-height:1.7;">'
+        + '⚠️ <strong>No <code style="background:#2a2a3a;padding:1px 5px;border-radius:3px;">artifacts</code> field found.</strong><br>'
+        + 'This doesn\'t look like a Lovart layer-separation response.<br>'
+        + 'In DevTools → Network, look for a request whose response contains <code style="background:#2a2a3a;padding:1px 5px;border-radius:3px;">generator_task_id</code> and <code style="background:#2a2a3a;padding:1px 5px;border-radius:3px;">artifacts</code>.'
+        + '</div>';
+    }
+    return;
+  }
+
+  let textRenderData = null;
+  let bgImageUrl = '';
+  const fgImages = [];
+  for (const a of artifacts) {
+    if (a.type === 'image' && a.metadata?.label === 'bg_image') bgImageUrl = a.content;
+    if (a.type === 'image' && a.metadata?.label === 'fg_image') fgImages.push(a);
+    if (a.type === 'text' && a.metadata?.label === 'text_render_data') {
+      try { textRenderData = JSON.parse(a.content); } catch(e) {}
+    }
+  }
+
+  const list = document.getElementById('layerList');
+  list.innerHTML = '';
+  let count = 0;
+
+  if (textRenderData?.layers) {
+    for (const layer of textRenderData.layers) {
+      count++;
+      const ti = layer.text_info;
+      const swatch = ti.color_css.replace('1.0', '1');
+      list.innerHTML += `<div class="layer-item text-layer">
+        <span class="layer-icon">✏️</span>
+        <span class="layer-name">${escHtml(ti.text)}</span>
+        <span class="layer-meta" style="display:flex;align-items:center;gap:5px;">
+          ${ti.font_size_px}px
+          <span style="width:10px;height:10px;border-radius:50%;background:${swatch};display:inline-block;border:1px solid #ffffff22;flex-shrink:0;"></span>
+        </span>
+      </div>`;
+    }
+  }
+
+  for (let i = 0; i < fgImages.length; i++) {
+    count++;
+    const m = fgImages[i].metadata;
+    const pos = m.bbox ? `${m.bbox[0]},${m.bbox[1]}` : `${m.width}×${m.height}`;
+    list.innerHTML += `<div class="layer-item" style="border-color:#34d39944">
+      <span class="layer-icon">🏞️</span>
+      <span class="layer-name">fg_image ${i + 1}</span>
+      <span class="layer-meta">${m.width}×${m.height} @ (${pos})</span>
+    </div>`;
+  }
+
+  if (bgImageUrl) {
+    count++;
+    list.innerHTML += `<div class="layer-item bg">
+      <span class="layer-icon">🖼️</span>
+      <span class="layer-name">Background</span>
+      <span class="layer-meta">bg_image</span>
+    </div>`;
+  }
+
+  const badge = document.getElementById('layerCount');
+  badge.textContent = `${count} layer${count !== 1 ? 's' : ''}`;
+  badge.style.display = 'inline-block';
+
+  // tiny preview canvas
+  const canvas = document.getElementById('previewCanvas');
+  if (textRenderData?.canvas_size) {
+    const { width, height } = textRenderData.canvas_size;
+    const scale = Math.min(160 / width, 214 / height);
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1e1e2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // draw fg_image bboxes
+    for (let i = 0; i < fgImages.length; i++) {
+      const m = fgImages[i].metadata;
+      const [x1, y1, x2, y2] = m.bbox || [0, 0, m.width, m.height];
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale);
+      ctx.fillStyle = '#34d39922';
+      ctx.fillRect(x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale);
+    }
+
+    // draw placeholder text blocks
+    if (textRenderData?.layers) {
+      for (const layer of textRenderData.layers) {
+        const ti = layer.text_info;
+        ctx.save();
+        ctx.fillStyle = ti.color_css;
+        ctx.font = `${Math.max(8, ti.font_size_px * scale)}px sans-serif`;
+        ctx.textAlign = 'center';
+        if (ti.rotation) {
+          const cx = (layer.x + layer.w / 2) * scale;
+          const cy = (layer.y + layer.h / 2) * scale;
+          ctx.translate(cx, cy);
+          ctx.rotate(ti.rotation * Math.PI / 180);
+          ctx.fillText(ti.text, 0, 0);
+        } else {
+          ctx.fillText(ti.text, (layer.x + layer.w / 2) * scale, (layer.y + layer.h) * scale);
+        }
+        ctx.restore();
+      }
+    }
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Convert ──────────────────────────────────────────────
+async function convert() {
+  if (!parsedData) {
+    alert('Please paste valid JSON data first.');
+    return;
+  }
+
+  const btn = document.getElementById('convertBtn');
+  const statusBar = document.getElementById('statusBar');
+  const progressFill = document.getElementById('progressFill');
+  const statusText = document.getElementById('statusText');
+  const corsWarning = document.getElementById('corsWarning');
+
+  btn.disabled = true;
+  statusBar.style.display = 'block';
+  corsWarning.style.display = 'none';
+  statusText.className = 'status-text';
+
+  let bgImageFailed = false;
+
+  function setProgress(pct, msg) {
+    progressFill.style.width = pct + '%';
+    statusText.textContent = msg;
+  }
+
+  try {
+    const artifacts = parsedData?.data?.artifacts;
+    if (!artifacts || !Array.isArray(artifacts)) {
+      throw new Error('No "artifacts" field found. Make sure you copied the correct Lovart API response (it should contain "generator_task_id" and "artifacts").');
+    }
+    let bgImageUrl = '';
+    let textRenderData = null;
+    const fgImageArtifacts = [];
+
+    for (const a of artifacts) {
+      if (a.type === 'image' && a.metadata?.label === 'bg_image') bgImageUrl = a.content;
+      if (a.type === 'image' && a.metadata?.label === 'fg_image') fgImageArtifacts.push(a);
+      if (a.type === 'text' && a.metadata?.label === 'text_render_data') {
+        textRenderData = JSON.parse(a.content);
+      }
+    }
+
+    if (!textRenderData) throw new Error('text_render_data not found in response');
+
+    const { width, height } = textRenderData.canvas_size;
+
+    // ── Download all images concurrently ──────────────────
+    const totalImages = (bgImageUrl ? 1 : 0) + fgImageArtifacts.length;
+    let downloaded = 0;
+
+    async function fetchImageCanvas(url, canvasW, canvasH) {
+      const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+      for (const u of [url, proxyUrl]) {
+        try {
+          const resp = await fetch(u, { signal: AbortSignal.timeout(15000) });
+          if (!resp.ok) continue;
+          const blob = await resp.blob();
+          const img = await loadImageFromBlob(blob);
+          const c = document.createElement('canvas');
+          c.width = canvasW;
+          c.height = canvasH;
+          c.getContext('2d').drawImage(img, 0, 0, canvasW, canvasH);
+          return c;
+        } catch(e) { /* try next */ }
+      }
+      return null; // failed
+    }
+
+    setProgress(5, `Downloading ${totalImages} image(s) in parallel…`);
+
+    // background
+    const bgPromise = bgImageUrl
+      ? fetchImageCanvas(bgImageUrl, width, height).then(c => { downloaded++; setProgress(5 + Math.round(downloaded / totalImages * 60), `Downloaded ${downloaded}/${totalImages}…`); return c; })
+      : Promise.resolve(null);
+
+    // foreground images
+    const fgPromises = fgImageArtifacts.map(a => {
+      const m = a.metadata;
+      return fetchImageCanvas(a.content, m.width, m.height).then(c => {
+        downloaded++;
+        setProgress(5 + Math.round(downloaded / totalImages * 60), `Downloaded ${downloaded}/${totalImages}…`);
+        return { canvas: c, metadata: m };
+      });
+    });
+
+    const [bgCanvas, ...fgResults] = await Promise.all([bgPromise, ...fgPromises]);
+
+    if (!bgCanvas && bgImageUrl) {
+      bgImageFailed = true;
+      corsWarning.style.display = 'block';
+    }
+
+    setProgress(70, 'Building layer structure…');
+
+    const psd = { width, height, children: [] };
+
+    // ── Text layers (top) ─────────────────────────────────
+    const layers = textRenderData.layers;
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const ti = layer.text_info;
+      const colorMatch = ti.color_css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      const r = colorMatch ? parseInt(colorMatch[1]) : 0;
+      const g = colorMatch ? parseInt(colorMatch[2]) : 0;
+      const b = colorMatch ? parseInt(colorMatch[3]) : 0;
+
+      const rotation = ti.rotation || 0;
+      const angle = rotation * Math.PI / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+
+      psd.children.push({
+        name: ti.text.substring(0, 20) || `Text ${i + 1}`,
+        text: {
+          text: ti.text,
+          transform: [cos, sin, -sin, cos, layer.x, layer.y],
+          left: 0,
+          top: 0,
+          right: layer.w,
+          bottom: layer.h,
+          style: {
+            font: { name: ti.font_family },
+            fontSize: ti.font_size_px,
+            fillColor: { r, g, b }
+          },
+          paragraphStyle: { alignment: paragraphAlign(ti.text_align) }
+        }
+      });
+    }
+
+    // ── Foreground image layers (middle) ──────────────────
+    for (let i = 0; i < fgResults.length; i++) {
+      const { canvas: fgCanvas, metadata: m } = fgResults[i];
+      const [x1, y1, x2, y2] = m.bbox || [0, 0, m.width, m.height];
+      if (fgCanvas) {
+        psd.children.push({
+          name: `fg_image ${i + 1}`,
+          top: y1,
+          left: x1,
+          bottom: y2,
+          right: x2,
+          canvas: fgCanvas
+        });
+      } else {
+        // blank placeholder preserving position
+        const blank = document.createElement('canvas');
+        blank.width = m.width;
+        blank.height = m.height;
+        psd.children.push({
+          name: `fg_image ${i + 1} (blank – CORS)`,
+          top: y1, left: x1, bottom: y2, right: x2,
+          canvas: blank
+        });
+      }
+    }
+
+    // ── Background layer (bottom) ─────────────────────────
+    if (bgCanvas) {
+      psd.children.push({ name: 'Background', canvas: bgCanvas });
+    } else {
+      const blankCanvas = document.createElement('canvas');
+      blankCanvas.width = width;
+      blankCanvas.height = height;
+      psd.children.push({ name: 'Background (blank – CORS)', canvas: blankCanvas });
+    }
+
+    setProgress(85, 'Generating PSD file…');
+    // ag-psd children[0] = bottom layer in Photoshop panel, so reverse to match preview order
+    psd.children.reverse();
+    const buffer = agPsd.writePsd(psd);
+    
+    setProgress(95, 'Preparing download…');
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lovart-export-${Date.now()}.psd`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    setProgress(100, '✅ Export successful! File downloaded.');
+    statusText.className = 'status-text success';
+
+  } catch(err) {
+    statusText.textContent = '❌ Error: ' + err.message;
+    statusText.className = 'status-text error';
+    progressFill.style.width = '0%';
+    console.error(err);
+  }
+
+  btn.disabled = false;
+}
+
+function loadImageFromBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+function paragraphAlign(align) {
+  const map = { left: 0, center: 2, right: 1, justify: 3 };
+  return map[align] ?? 0;
+}
+</script>
+</body>
+</html>
